@@ -19,7 +19,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="?attr/colorPrimary"
-            android:theme="@style/MyAppBarLayoutTheme"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -57,28 +56,58 @@
                 android:layout_height="match_parent"
                 android:background="@drawable/stick" />
 
-            <com.google.android.material.button.MaterialButton
-                android:layout_weight="1"
-                android:id="@+id/hidBtn"
+            <RelativeLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=""
-                app:icon="@drawable/ic_keyboard"
-                app:rippleColor="@color/accent"/>
+                android:layout_weight="1">
+
+                <ImageView
+                    android:id="@+id/iconLang"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clickable="false"
+                    android:contentDescription="@string/app_name"
+                    android:longClickable="false"
+                    app:srcCompat="@drawable/ic_keyboard" />
+
+                <Spinner
+                    android:id="@+id/langMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_centerInParent="true"
+                    android:layout_toEndOf="@id/iconLang" />
+
+            </RelativeLayout>
 
             <View
                 android:layout_width="1dp"
                 android:layout_height="match_parent"
                 android:background="@drawable/stick" />
 
-            <com.google.android.material.button.MaterialButton
-                android:layout_weight="1"
-                android:id="@+id/modeBtn"
+            <RelativeLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=""
-                app:icon="@drawable/ic_device"
-                app:rippleColor="@color/accent"/>
+                android:layout_weight="1">
+
+                <ImageView
+                    android:id="@+id/iconMode"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clickable="false"
+                    android:contentDescription="@string/app_name"
+                    android:longClickable="false"
+                    app:srcCompat="@drawable/ic_device" />
+
+                <Spinner
+                    android:id="@+id/modeMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_centerInParent="true"
+                    android:layout_toEndOf="@id/iconMode" />
+
+            </RelativeLayout>
 
             <View
                 android:layout_width="1dp"
@@ -112,7 +141,6 @@
                 android:id="@+id/code"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:cursorVisible="true"
                 android:ems="10"
                 android:gravity="start"
                 android:hint="@string/codeHint"
@@ -125,8 +153,7 @@
                 android:paddingTop="5dp"
                 android:paddingEnd="5dp"
                 android:paddingRight="5dp"
-                android:paddingBottom="5dp"
-                android:textCursorDrawable="@drawable/cursor" />
+                android:paddingBottom="5dp" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <View

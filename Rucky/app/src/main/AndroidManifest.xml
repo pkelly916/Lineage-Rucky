@@ -3,8 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.mayank.rucky">
 
-    <uses-feature android:name="android.hardware.usb.host" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -17,8 +15,8 @@
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.INSTALL_SHORTCUT" />
     <uses-permission android:name="android.permission.UNINSTALL_SHORTCUT" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FACTORY_TEST"
+    <uses-permission
+        android:name="android.permission.FACTORY_TEST"
         tools:ignore="ProtectedPermissions" />
 
     <application
@@ -33,30 +31,6 @@
         android:requestLegacyExternalStorage="true"
         tools:targetApi="q">
 
-        <receiver android:name=".RestartReceiver">
-            <intent-filter>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-            </intent-filter>
-        </receiver>
-
-        <receiver android:name=".USBReceiver">
-            <intent-filter>
-                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
-                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
-                <action android:name="android.hardware.usb.action.USB_STATE" />
-                <action android:name="asyncUSBWrite" />
-            </intent-filter>
-        </receiver>
-        
-        <receiver android:name=".PiReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="piConnected" />
-                <action android:name="piDisconnected" />
-                <action android:name="asyncPiWrite" />
-            </intent-filter>
-        </receiver>
-
         <receiver android:name=".SecretCodeReceiver">
             <intent-filter>
                 <action android:name="android.provider.Telephony.SECRET_CODE" />
@@ -66,9 +40,6 @@
                     android:scheme="android_secret_code" />
             </intent-filter>
         </receiver>
-
-        <service android:name=".PingService"
-            android:enabled="true" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -82,16 +53,29 @@
 
         <activity
             android:name=".SplashActivity"
-            android:configChanges="orientation|keyboardHidden|screenSize"
-            android:clearTaskOnLaunch="true"
-            android:launchMode="singleTask">
+            android:configChanges="orientation|keyboardHidden|screenSize">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="@string/baseURI"
+                    android:pathPrefix="/"
+                    android:scheme="https" />
             </intent-filter>
+            <!-- adb -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- URI -->
+                <data
+                    android:host="@string/baseURI"
+                    android:pathPrefix="/"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
 

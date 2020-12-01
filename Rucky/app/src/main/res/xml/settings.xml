@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <PreferenceCategory
         app:key="settings"
         app:title="@string/setting_general">
@@ -25,30 +26,20 @@
             app:title="@string/settings_sec_title"
             app:summary="@string/settings_sec_desc" />
 
+        <SwitchPreferenceCompat
+            android:id="@+id/switchPreferenceCompat"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:defaultValue="false"
+            app:icon="@drawable/ic_hidenable"
+            app:key="hid"
+            app:summary="@string/settings_hid_desc"
+            app:title="@string/settings_hid_title" />
         <Preference
             app:key="uninstall"
             app:icon="@drawable/ic_uninstall"
             app:title="@string/delete_dep_title"
             app:summary="@string/delete_dep_summary" />
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        app:key="device"
-        app:title="@string/setting_device">
-
-        <SwitchPreferenceCompat
-            app:key="usb"
-            app:icon="@drawable/ic_usb"
-            app:defaultValue="false"
-            app:title="@string/settings_usb_title"
-            app:summary="@string/settings_usb_desc" />
-
-        <SwitchPreferenceCompat
-            app:key="rpi"
-            app:icon="@drawable/ic_rpi"
-            app:defaultValue="false"
-            app:title="@string/settings_rpi_title"
-            app:summary="@string/settings_rpi_desc" />
 
     </PreferenceCategory>
 
@@ -75,7 +66,7 @@
         <Preference
             app:icon="@drawable/ic_store"
             app:key="source"
-            app:title="@string/release" />
+            app:title="Distribution" />
 
         <Preference
             app:icon="@drawable/ic_license"
@@ -100,6 +91,18 @@
             app:icon="@drawable/ic_localize"
             app:title="@string/settings_locale_title"
             app:summary="@string/settings_locale_desc"/>
+
+        <Preference
+            app:key="patreon"
+            app:icon="@drawable/ic_patreon"
+            app:title="@string/setting_patreon_title"
+            app:summary="@string/setting_patreon_desc"/>
+
+        <Preference
+            app:key="paypal"
+            app:icon="@drawable/ic_paypal"
+            app:title="@string/setting_paypal_title"
+            app:summary="@string/setting_paypal_desc"/>
 
     </PreferenceCategory>
 

@@ -19,12 +19,12 @@
             android:layout_height="@dimen/img_width_height"
             android:contentDescription="@string/icon"
             android:tint="#FFFFFF"
-            app:srcCompat="@drawable/ic_run" />
+            app:srcCompat="@drawable/ic_delete" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/slideTitle2"
+            android:text="@string/slideTitle5"
             android:textColor="@color/accent"
             android:textSize="@dimen/slide_title"
             android:textStyle="bold" />
@@ -35,7 +35,7 @@
             android:layout_marginTop="20dp"
             android:paddingLeft="@dimen/desc_padding"
             android:paddingRight="@dimen/desc_padding"
-            android:text="@string/slideDesc2"
+            android:text="@string/slideDesc5"
             android:textAlignment="center"
             android:textColor="@android:color/white"
             android:textSize="@dimen/slide_desc" />

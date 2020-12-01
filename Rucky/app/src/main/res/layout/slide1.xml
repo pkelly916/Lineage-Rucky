@@ -3,7 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/pri_dark">
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -17,7 +18,6 @@
             android:layout_width="@dimen/img_width_height"
             android:layout_height="@dimen/img_width_height"
             android:contentDescription="@string/icon"
-            android:padding="90sp"
             android:tint="#FFFFFF"
             app:srcCompat="@drawable/ic_icon" />
 
