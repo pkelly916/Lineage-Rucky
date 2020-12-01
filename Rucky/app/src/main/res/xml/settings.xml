@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory
+        app:key="settings"
+        app:title="@string/setting_general">
+
+        <SwitchPreferenceCompat
+            app:key="theme"
+            app:icon="@drawable/ic_dark"
+            app:defaultValue="true"
+            app:title="@string/dark_theme_title"
+            app:summary="@string/dark_theme_summary" />
+
+        <SwitchPreferenceCompat
+            app:key="icon"
+            app:icon="@drawable/ic_launch"
+            app:defaultValue="false"
+            app:title="@string/hide_icon_title"
+            app:summary="@string/hide_icon_summary" />
+
+        <SwitchPreferenceCompat
+            app:key="sec"
+            app:icon="@drawable/ic_security"
+            app:defaultValue="false"
+            app:title="@string/settings_sec_title"
+            app:summary="@string/settings_sec_desc" />
+
+        <Preference
+            app:key="uninstall"
+            app:icon="@drawable/ic_uninstall"
+            app:title="@string/delete_dep_title"
+            app:summary="@string/delete_dep_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="device"
+        app:title="@string/setting_device">
+
+        <SwitchPreferenceCompat
+            app:key="usb"
+            app:icon="@drawable/ic_usb"
+            app:defaultValue="false"
+            app:title="@string/settings_usb_title"
+            app:summary="@string/settings_usb_desc" />
+
+        <SwitchPreferenceCompat
+            app:key="rpi"
+            app:icon="@drawable/ic_rpi"
+            app:defaultValue="false"
+            app:title="@string/settings_rpi_title"
+            app:summary="@string/settings_rpi_desc" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="summary"
+        app:title="@string/setting_about">
+
+        <Preference
+            app:icon="@drawable/ic_developer"
+            app:key="developer"
+            app:summary="@string/setting_developer"
+            app:title="@string/setting_developer_title" />
+
+        <Preference
+            app:icon="@drawable/ic_version"
+            app:key="version"
+            app:title="@string/settings_version_title" />
+
+        <Preference
+            app:icon="@drawable/ic_arch"
+            app:key="arch"
+            app:title="@string/settings_arch_title" />
+
+        <Preference
+            app:icon="@drawable/ic_store"
+            app:key="source"
+            app:title="@string/release" />
+
+        <Preference
+            app:icon="@drawable/ic_license"
+            app:key="lic"
+            app:summary="@string/settings_lic_desc"
+            app:title="@string/settings_lic_title" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:key="support"
+        app:title="@string/settings_support">
+
+        <Preference
+            app:key="git"
+            app:icon="@drawable/ic_github"
+            app:title="@string/settings_git_title"
+            app:summary="@string/settings_git_desc"/>
+
+        <Preference
+            app:key="locale"
+            app:icon="@drawable/ic_localize"
+            app:title="@string/settings_locale_title"
+            app:summary="@string/settings_locale_desc"/>
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

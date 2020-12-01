@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="slideDesc1">Превратите ваше устройство в резиновый Ducky!</string>
+    <string name="setting_general">Общие положения</string>
+    <string name="dark_theme_title">Темный режим</string>
+    <string name="dark_theme_summary">Ярлык на главном экране не сохраняется.</string>
+    <string name="hide_icon_title">Скрыть значок лаунчера</string>
+    <string name="hide_icon_summary">Наберите *#*#78259#*#* для запуска.</string>
+    <string name="delete_dep_title">Удалить приложение</string>
+    <string name="delete_dep_summary">Очистка и удаление приложения.</string>
+    <string name="settings_sec_title">Расширенная безопасность</string>
+    <string name="settings_sec_desc">Включить шифрование файлов скрипта и блокировку экрана.</string>
+    <string name="setting_about">Инфо</string>
+    <string name="setting_developer_title">Разработчик</string>
+    <string name="settings_version_title">Версии</string>
+    <string name="settings_arch_title">Архитектура</string>
+    <string name="settings_lic_title">Лицензия</string>
+    <string name="settings_support">Поддержка</string>
+    <string name="settings_git_desc">Нажмите, чтобы добавить задачи или запрос функции.</string>
+    <string name="settings_locale_title">Локализация</string>
+    <string name="settings_locale_desc">Нажмите, чтобы просмотреть участников локализации.</string>
+    <string name="releaseNetHunter">Магазин приложений NetHunter</string>
+    <string name="releaseGitHub">Релиз GitHub</string>
+    <string name="releaseTest">Отладка релиза</string>
+    <string name="releaseOthers">Поддерживаемый релиз</string>
+    <string name="setting_name">Настройки</string>
+    <string name="update_name">Обновить</string>
+    <string name="loadBtn">Нагрузка</string>
+    <string name="saveBtn">Сохранить</string>
+    <string name="delBtn">Удалить</string>
+    <string name="runBtn">Запустить</string>
+    <string name="codeHint">Введите или нагрузите резиновые скрипты</string>
+    <string name="btn_save">Сохранить</string>
+</resources>
