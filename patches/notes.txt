@@ -1,10 +1,11 @@
 Patches for Lineage 16.1 Kernel on Google Pixel (sailfish) device.
 
 sailfish_3.18_kernel.patch
--Adds enableable keyboard HID gadget driver for the 3.18 kernel. 
+- Adds enableable keyboard HID gadget driver for the 3.18 kernel. 
+- Apply to Lineage-Source-Tree-Root/kernel/google/marlin
 
 hid_selinux.patch
--Adds SELinux exceptions for the /dev/hidg0 device needed by the
-HID gadget driver. 
+- Adds SELinux exceptions for the /dev/hidg0 device needed by the HID gadget driver. 
+- Apply to Lineage-Source-Tree-Root/device/google/marlin
 
 See https://github.com/peyla/android-keyboard-gadget for more info.
