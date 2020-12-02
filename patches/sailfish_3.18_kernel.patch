@@ -1,0 +1,455 @@
+diff --git a/drivers/usb/gadget/android.c b/drivers/usb/gadget/android.c
+index 09bf7d19900..c109b89a27b 100644
+--- a/drivers/usb/gadget/android.c
++++ b/drivers/usb/gadget/android.c
+@@ -72,6 +72,8 @@ static bool connect2pc;
+ #include "u_qc_ether.c"
+ #include "f_gsi.c"
+ #include "f_mass_storage.h"
++#include "f_hid.h"
++#include "f_hid_android_keyboard.c"
+ 
+ USB_ETHERNET_MODULE_PARAMETERS();
+ #include "debug.h"
+@@ -3022,6 +3024,35 @@ static struct android_usb_function midi_function = {
+ };
+ #endif
+ 
++static int hid_function_init(struct android_usb_function *f, struct usb_composite_dev *cdev) 
++{
++	return ghid_setup(cdev->gadget, 1);
++}
++
++static void hid_function_cleanup(struct android_usb_function *f)
++{
++	ghid_cleanup();
++}
++
++static int hid_function_bind_config(struct android_usb_function *f, struct usb_configuration *c)
++{
++	int ret;
++	printk(KERN_INFO "hid keyboard\n");
++	ret = hidg_bind_config(c, &ghid_device_android_keyboard, 0);
++	if (ret) {
++		pr_info("%s: hid_function_bind_config keyboard failed: %d\n", __func__, ret);
++		return ret;
++	}
++	return 0;
++}
++
++static struct android_usb_function hid_function = {
++	.name		= "hid",
++	.init		= hid_function_init,
++	.cleanup	= hid_function_cleanup,
++	.bind_config	= hid_function_bind_config,
++};
++
+ static int rndis_gsi_function_init(struct android_usb_function *f,
+ 					struct usb_composite_dev *cdev)
+ {
+@@ -3190,6 +3221,7 @@ static struct android_usb_function *supported_functions[] = {
+ #ifdef CONFIG_SND_RAWMIDI
+ 	[ANDROID_MIDI] = &midi_function,
+ #endif
++	[ANDROID_HID] = &hid_function,
+ 	[ANDROID_RNDIS_GSI] = &rndis_gsi_function,
+ 	[ANDROID_ECM_GSI] = &ecm_gsi_function,
+ 	[ANDROID_RMNET_GSI] = &rmnet_gsi_function,
+@@ -3225,6 +3257,7 @@ static struct android_usb_function *default_functions[] = {
+ #ifdef CONFIG_SND_RAWMIDI
+ 	&midi_function,
+ #endif
++	&hid_function,
+ 	NULL
+ };
+ 
+@@ -3583,6 +3616,7 @@ functions_store(struct device *pdev, struct device_attribute *attr,
+ 	int err;
+ 	int is_ffs;
+ 	int ffs_enabled = 0;
++	int hid_enabled = 0;
+ 
+ 	mutex_lock(&ffs_configs_lock);
+ 	mutex_lock(&dev->mutex);
+@@ -3643,25 +3677,46 @@ functions_store(struct device *pdev, struct device_attribute *attr,
+ 			}
+ 
+ 			if (is_ffs) {
+-				err = android_enable_ffs_function(dev,
+-						conf, name);
++				err = android_enable_ffs_function(dev, conf, name);
+ 				if (err)
+-					pr_err("android_usb: Cannot enable ffs (%d)",
+-									err);
++					pr_err("android_usb: Cannont enable ffs (%d)", err);
+ 				else
+ 					ffs_enabled = 1;
+ 				continue;
+ 			}
+ 
++			if (hid_enabled && !strcmp(name, "hid"))
++				continue;
++
+ 			if (!strcmp(name, "rndis") &&
+ 				!strcmp(strim(rndis_transports), "BAM2BAM_IPA"))
+ 				name = "rndis_qc";
+ 
++			err = android_enable_function(dev, conf, name);
++			if (err) {
++				pr_err("android_usb: Cannot enable '%s' (%d)",
++							name, err);
++				continue;
++			}
++
++			if (!strcmp(name, "hid"))
++				hid_enabled = 1;
++
++		}
++
++		/* Always enable HID gadget function. */
++		/*
++		if (!hid_enabled) {
++			name = "hid";
+ 			err = android_enable_function(dev, conf, name);
+ 			if (err)
+ 				pr_err("android_usb: Cannot enable '%s' (%d)",
+ 							name, err);
++			else
++				hid_enabled = 1;
+ 		}
++		*/
++		
+ 	}
+ 
+ 	/* Free uneeded configurations if exists */
+diff --git a/drivers/usb/gadget/function/Makefile b/drivers/usb/gadget/function/Makefile
+index cc428c4d2b9..10dc3d268ca 100644
+--- a/drivers/usb/gadget/function/Makefile
++++ b/drivers/usb/gadget/function/Makefile
+@@ -46,5 +46,5 @@ usb_f_audio_source-y            := f_audio_source.o
+ obj-$(CONFIG_USB_F_AUDIO_SRC)   += usb_f_audio_source.o
+ usb_f_accessory-y               := f_accessory.o
+ obj-$(CONFIG_USB_F_ACC)         += usb_f_accessory.o
+-
+-
++usb_f_hid-y			:= f_hid.o
++obj-$(CONFIG_USB_G_ANDROID)	+= usb_f_hid.o
+diff --git a/drivers/usb/gadget/function/f_hid.c b/drivers/usb/gadget/function/f_hid.c
+index 46a1207eb1a..6abbdd81ee2 100644
+--- a/drivers/usb/gadget/function/f_hid.c
++++ b/drivers/usb/gadget/function/f_hid.c
+@@ -17,8 +17,10 @@
+ #include <linux/poll.h>
+ #include <linux/uaccess.h>
+ #include <linux/wait.h>
++#include <linux/delay.h>
+ #include <linux/sched.h>
+ #include <linux/usb/g_hid.h>
++#include "f_hid.h"
+ 
+ #include "u_f.h"
+ 
+@@ -62,6 +64,45 @@ struct f_hidg {
+ 	struct usb_ep			*out_ep;
+ };
+ 
++/* Hacky device list to fix f_hidg_write being called after device destroyed.
++   It covers only the most common race conditions, there will be rare crashes anyway. */
++enum { HACKY_DEVICE_LIST_SIZE = 4 };
++static struct f_hidg *hacky_device_list[HACKY_DEVICE_LIST_SIZE];
++static void hacky_device_list_add(struct f_hidg *hidg)
++{
++	int i;
++	for (i = 0; i < HACKY_DEVICE_LIST_SIZE; i++) {
++		if (!hacky_device_list[i]) {
++			hacky_device_list[i] = hidg;
++			return;
++		}
++	}
++	pr_err("%s: too many devices, not adding device %p\n", __func__, hidg);
++}
++
++static void hacky_device_list_remove(struct f_hidg *hidg)
++{
++	int i;
++	for (i = 0; i < HACKY_DEVICE_LIST_SIZE; i++) {
++		if (hacky_device_list[i] == hidg) {
++			hacky_device_list[i] = NULL;
++			return;
++		}
++	}
++	pr_err("%s: cannot find device %p\n", __func__, hidg);
++}
++
++static int hacky_device_list_check(struct f_hidg *hidg) 
++{
++	int i;
++	for (i = 0; i < HACKY_DEVICE_LIST_SIZE; i++) {
++		if (hacky_device_list[i] == hidg) {
++			return 0;
++		}
++	}
++	return 1;
++}
++
+ static inline struct f_hidg *func_to_hidg(struct usb_function *f)
+ {
+ 	return container_of(f, struct f_hidg, func);
+@@ -92,6 +133,59 @@ static struct hid_descriptor hidg_desc = {
+ 	/*.desc[0].wDescriptorLenght	= DYNAMIC */
+ };
+ 
++/* Super-Speed support */
++static struct usb_endpoint_descriptor hidg_ss_in_ep_desc = {
++	.bLength		= USB_DT_ENDPOINT_SIZE,
++	.bDescriptorType 	= USB_DT_ENDPOINT,
++	.bEndpointAddress	= USB_DIR_IN,
++	.bmAttributes		= USB_ENDPOINT_XFER_INT,
++	/*.wMaxPacketSize	= DYNAMIC */
++	.bInterval		= 4, /* FIXME: Add this field in the
++				      *	HID gadget configuration?
++				      *	(struct hidg_func_descriptor)
++				      */
++};
++
++static struct usb_ss_ep_comp_descriptor hidg_ss_in_comp_desc = {
++	.bLength		= sizeof(hidg_ss_in_comp_desc),
++	.bDescriptorType	= USB_DT_SS_ENDPOINT_COMP,
++
++	/* .bMaxBurst		= 0, */
++	/* .bmAttributes	= 0, */
++	/* .wBytesPerInterval	= DYNAMIC */
++};
++
++static struct usb_endpoint_descriptor hidg_ss_out_ep_desc = {
++	.bLength		= USB_DT_ENDPOINT_SIZE,
++	.bDescriptorType	= USB_DT_ENDPOINT,
++	.bEndpointAddress	= USB_DIR_OUT,
++	.bmAttributes		= USB_ENDPOINT_XFER_INT,
++	/*.wMaxPacketSize	= DYNAMIC */
++	.bInterval		= 4, /* FIXME: Add this field in the
++				      * HID gadget configuration?
++				      * (struct hidg_func_descriptor)
++				      */
++};
++
++static struct usb_ss_ep_comp_descriptor hidg_ss_out_comp_desc = {
++	.bLength		= sizeof(hidg_ss_out_comp_desc),
++	.bDescriptorType	= USB_DT_SS_ENDPOINT_COMP,
++
++	/* .bMaxBurst		= 0, */
++	/* .bmAttributes	= 0, */
++	/* .wBytesPerInterval	= DYNAMIC */
++};
++
++static struct usb_descriptor_header *hidg_ss_descriptors[] = {
++	(struct usb_descriptor_header *)&hidg_interface_desc,
++	(struct usb_descriptor_header *)&hidg_desc,
++	(struct usb_descriptor_header *)&hidg_ss_in_ep_desc,
++	(struct usb_descriptor_header *)&hidg_ss_in_comp_desc,
++	(struct usb_descriptor_header *)&hidg_ss_out_ep_desc,
++	(struct usb_descriptor_header *)&hidg_ss_out_comp_desc,
++	NULL,
++};
++
+ /* High-Speed Support */
+ 
+ static struct usb_endpoint_descriptor hidg_hs_in_ep_desc = {
+@@ -178,6 +272,11 @@ static ssize_t f_hidg_read(struct file *file, char __user *buffer,
+ 	if (!access_ok(VERIFY_WRITE, buffer, count))
+ 		return -EFAULT;
+ 
++	if (hacky_device_list_check(hidg)) {
++		pr_err("%s: trying to read from device %p that was destroyed\n", __func__, hidg);
++		return -EIO;
++	}
++
+ 	spin_lock_irqsave(&hidg->spinlock, flags);
+ 
+ #define READ_COND (!list_empty(&hidg->completed_out_req))
+@@ -260,6 +359,11 @@ static ssize_t f_hidg_write(struct file *file, const char __user *buffer,
+ 	if (!access_ok(VERIFY_READ, buffer, count))
+ 		return -EFAULT;
+ 
++	if (hacky_device_list_check(hidg)) {
++		pr_err("%s: trying to write to device %p that was destroyed\n", __func__, hidg);
++		return -EIO;
++	}
++
+ 	mutex_lock(&hidg->lock);
+ 
+ #define WRITE_COND (!hidg->write_pending)
+@@ -274,6 +378,11 @@ static ssize_t f_hidg_write(struct file *file, const char __user *buffer,
+ 				hidg->write_queue, WRITE_COND))
+ 			return -ERESTARTSYS;
+ 
++		if (hacky_device_list_check(hidg)) {
++			pr_err("%s: trying to write to device %p that was destroyed\n", __func__, hidg);
++			return -EIO;
++		}
++
+ 		mutex_lock(&hidg->lock);
+ 	}
+ 
+@@ -314,7 +423,18 @@ static unsigned int f_hidg_poll(struct file *file, poll_table *wait)
+ 	struct f_hidg	*hidg  = file->private_data;
+ 	unsigned int	ret = 0;
+ 
++	if (hacky_device_list_check(hidg)) {
++		pr_err("%s: trying to poll device %p that was destroyed\n", __func__, hidg);
++		return -EIO;
++	}
++
+ 	poll_wait(file, &hidg->read_queue, wait);
++
++	if (hacky_device_list_check(hidg)) {
++		pr_err("%s: trying to poll device %p that was destroyed\n", __func__, hidg);
++		return -EIO;
++	}
++
+ 	poll_wait(file, &hidg->write_queue, wait);
+ 
+ 	if (WRITE_COND)
+@@ -403,7 +523,12 @@ static int hidg_setup(struct usb_function *f,
+ 	case ((USB_DIR_IN | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
+ 		  | HID_REQ_GET_PROTOCOL):
+ 		VDBG(cdev, "get_protocol\n");
+-		goto stall;
++		length = min_t(unsigned, length, 1);
++		if (hidg->bInterfaceSubClass == USB_INTERFACE_SUBCLASS_BOOT)
++			((u8 *) req->buf)[0] = 0;	/* boot protocol */
++		else
++			((u8 *) req->buf)[0] = 1;	/* report protocol */
++		goto respond;
+ 		break;
+ 
+ 	case ((USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
+@@ -415,6 +540,14 @@ static int hidg_setup(struct usb_function *f,
+ 	case ((USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE) << 8
+ 		  | HID_REQ_SET_PROTOCOL):
+ 		VDBG(cdev, "set_protocol\n");
++		length = 0;
++		if (hidg->bInterfaceSubClass == USB_INTERFACE_SUBCLASS_BOOT) {
++			if (value == 0)		/* boot protocol */
++				goto respond;
++		} else { 
++			if (value == 1)		/* report protocol */
++				goto respond;
++		}
+ 		goto stall;
+ 		break;
+ 
+@@ -568,13 +701,15 @@ const struct file_operations f_hidg_fops = {
+ 	.llseek		= noop_llseek,
+ };
+ 
+-static int __init hidg_bind(struct usb_configuration *c, struct usb_function *f)
++static int hidg_bind(struct usb_configuration *c, struct usb_function *f)
+ {
+ 	struct usb_ep		*ep;
+ 	struct f_hidg		*hidg = func_to_hidg(f);
+ 	int			status;
+ 	dev_t			dev;
+ 
++	pr_info("%s: creating device %p\n", __func__, hidg);
++
+ 	/* allocate instance-specific interface IDs, and patch descriptors */
+ 	status = usb_interface_id(c, f);
+ 	if (status < 0)
+@@ -608,8 +743,12 @@ static int __init hidg_bind(struct usb_configuration *c, struct usb_function *f)
+ 	/* set descriptor dynamic values */
+ 	hidg_interface_desc.bInterfaceSubClass = hidg->bInterfaceSubClass;
+ 	hidg_interface_desc.bInterfaceProtocol = hidg->bInterfaceProtocol;
++	hidg_ss_in_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
++	hidg_ss_in_comp_desc.wBytesPerInterval = cpu_to_le16(hidg->report_length);
+ 	hidg_hs_in_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
+ 	hidg_fs_in_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
++	hidg_ss_out_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
++	hidg_ss_out_comp_desc.wBytesPerInterval = cpu_to_le16(hidg->report_length);
+ 	hidg_hs_out_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
+ 	hidg_fs_out_ep_desc.wMaxPacketSize = cpu_to_le16(hidg->report_length);
+ 	hidg_desc.desc[0].bDescriptorType = HID_DT_REPORT;
+@@ -620,9 +759,13 @@ static int __init hidg_bind(struct usb_configuration *c, struct usb_function *f)
+ 		hidg_fs_in_ep_desc.bEndpointAddress;
+ 	hidg_hs_out_ep_desc.bEndpointAddress =
+ 		hidg_fs_out_ep_desc.bEndpointAddress;
++	hidg_ss_in_ep_desc.bEndpointAddress =
++		hidg_fs_in_ep_desc.bEndpointAddress;
++	hidg_ss_out_ep_desc.bEndpointAddress =
++		hidg_fs_out_ep_desc.bEndpointAddress;
+ 
+ 	status = usb_assign_descriptors(f, hidg_fs_descriptors,
+-			hidg_hs_descriptors, NULL);
++			hidg_hs_descriptors, hidg_ss_descriptors);
+ 	if (status)
+ 		goto fail;
+ 
+@@ -640,6 +783,7 @@ static int __init hidg_bind(struct usb_configuration *c, struct usb_function *f)
+ 		goto fail_free_descs;
+ 
+ 	device_create(hidg_class, NULL, dev, NULL, "%s%d", "hidg", hidg->minor);
++	hacky_device_list_add(hidg);
+ 
+ 	return 0;
+ 
+@@ -660,12 +804,20 @@ static void hidg_unbind(struct usb_configuration *c, struct usb_function *f)
+ {
+ 	struct f_hidg *hidg = func_to_hidg(f);
+ 
++	pr_info("%s: destroying device %p\n", __func__, hidg);
++	/* This does not cover all race conditions, only most common one */
++	mutex_lock(&hidg->lock);
++	hacky_device_list_remove(hidg);
++	mutex_unlock(&hidg->lock);
++
+ 	device_destroy(hidg_class, MKDEV(major, hidg->minor));
+ 	cdev_del(&hidg->cdev);
+ 
+ 	/* disable/free request and end point */
+ 	usb_ep_disable(hidg->in_ep);
+-	usb_ep_dequeue(hidg->in_ep, hidg->req);
++	/* TODO: calling this function crash kernel, 
++	 * not calling this function crash kernel inside f_hidg_write */
++	/* usb_ep_dequeue(hidg->in_ep, hidg->req); */
+ 	kfree(hidg->req->buf);
+ 	usb_ep_free_request(hidg->in_ep, hidg->req);
+ 
+@@ -698,7 +850,7 @@ static struct usb_gadget_strings *ct_func_strings[] = {
+ /*-------------------------------------------------------------------------*/
+ /*                             usb_configuration                           */
+ 
+-int __init hidg_bind_config(struct usb_configuration *c,
++int hidg_bind_config(struct usb_configuration *c,
+ 			    struct hidg_func_descriptor *fdesc, int index)
+ {
+ 	struct f_hidg *hidg;
+@@ -752,7 +904,7 @@ int __init hidg_bind_config(struct usb_configuration *c,
+ 	return status;
+ }
+ 
+-int __init ghid_setup(struct usb_gadget *g, int count)
++int ghid_setup(struct usb_gadget *g, int count)
+ {
+ 	int status;
+ 	dev_t dev;
+diff --git a/include/linux/usb/android.h b/include/linux/usb/android.h
+index a28182c8d54..43401d629f2 100644
+--- a/include/linux/usb/android.h
++++ b/include/linux/usb/android.h
+@@ -42,6 +42,7 @@ enum android_function_index {
+ 	ANDROID_AUDIO_SRC,
+ 	ANDROID_CHARGER,
+ 	ANDROID_MIDI,
++	ANDROID_HID,
+ 	ANDROID_RNDIS_GSI,
+ 	ANDROID_ECM_GSI,
+ 	ANDROID_RMNET_GSI,
+@@ -100,6 +101,8 @@ static enum android_function_index name_to_func_idx(const char *name)
+ 		return ANDROID_AUDIO_SRC;
+ 	if (!strncasecmp("MIDI", name, FUNC_NAME_LEN))
+ 		return ANDROID_MIDI;
++	if (!strncasecmp("HID", name, FUNC_NAME_LEN))
++		return ANDROID_HID;
+ 	if (!strncasecmp("RNDIS_GSI", name, FUNC_NAME_LEN))
+ 		return ANDROID_RNDIS_GSI;
+ 	if (!strncasecmp("ECM_GSI", name, FUNC_NAME_LEN))

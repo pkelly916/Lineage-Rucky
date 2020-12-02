@@ -1,0 +1,46 @@
+diff --git a/sailfish/device-proprietary-files-vendor.txt b/sailfish/device-proprietary-files-vendor.txt
+index 96ee41f3..b10346c1 100644
+--- a/sailfish/device-proprietary-files-vendor.txt
++++ b/sailfish/device-proprietary-files-vendor.txt
+@@ -211,6 +211,7 @@ vendor/firmware/napp_list.cfg
+ vendor/firmware/otp30.bin
+ vendor/firmware/pickup_gesture.napp
+ vendor/firmware/qwlan30.bin
++vendor/firmware/rt2870.bin
+ vendor/firmware/sig_motion.napp
+ vendor/firmware/slpi.b00
+ vendor/firmware/slpi.b01
+diff --git a/sepolicy/app.te b/sepolicy/app.te
+index b0997122..3a493fe0 100644
+--- a/sepolicy/app.te
++++ b/sepolicy/app.te
+@@ -4,3 +4,4 @@ allowxperm { appdomain -isolated_app } gpu_device:chr_file
+ 
+ allow { appdomain -isolated_app } sysfs_soc:dir search;
+ allow { appdomain -isolated_app } sysfs_soc:file r_file_perms;
++allow appdomain hid_gadget_device:chr_file rw_file_perms;
+diff --git a/sepolicy/device.te b/sepolicy/device.te
+index f2ca8eaf..38b62f9f 100644
+--- a/sepolicy/device.te
++++ b/sepolicy/device.te
+@@ -8,6 +8,7 @@ type sg_device, dev_type;
+ type ssr_device, dev_type;
+ type thermal_device, dev_type;
+ type pta_device, dev_type;
++type hid_gadget_device, dev_type;
+ 
+ type custom_ab_block_device, dev_type;
+ type xbl_block_device, dev_type;
+diff --git a/sepolicy/file_contexts b/sepolicy/file_contexts
+index f104cbb4..84949d00 100644
+--- a/sepolicy/file_contexts
++++ b/sepolicy/file_contexts
+@@ -207,5 +207,8 @@
+ # hidraw dynamic sensor
+ /dev/hidraw[0-9]+            u:object_r:sensors_device:s0
+ 
++# USB Gadget
++/dev/hidg[0-9]		u:object_r:hid_gadget_device:s0
++
+ # b/70518189 vDSO experiments
+ /sys/module/vdso/parameters  u:object_r:sysfs_vdso:s0
